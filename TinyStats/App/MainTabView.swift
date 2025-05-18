@@ -5,24 +5,24 @@ struct MainTabView: View {
         TabView {
             HomeView()
                 .tabItem {
-                    Label("Home", systemImage: "house.fill")
+                    Label("Home", systemImage: "house")
                 }
 
-            TeamTabView()
+            TeamView()
+                .id("team-tab") // Prevents tab bouncing by maintaining stable identity
                 .tabItem {
-                    Label("Team", systemImage: "person.3.fill")
+                    Label("Team", systemImage: "person.3")
                 }
 
             PlayerZoneView()
                 .tabItem {
-                    Label("Player Zone", systemImage: "graduationcap.fill")
+                    Label("Player Zone", systemImage: "graduationcap")
                 }
 
             SettingsView()
                 .tabItem {
-                    Label("Settings", systemImage: "gearshape.fill")
+                    Label("Settings", systemImage: "gear")
                 }
         }
-        .preferredColorScheme(.light)
     }
 }

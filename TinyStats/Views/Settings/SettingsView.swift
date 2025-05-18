@@ -11,34 +11,58 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section(header: Text("Account")) {
-                    if isLoggedIn {
-                        Button("Sign Out") {
-                            do {
-                                try Auth.auth().signOut()
-                                isLoggedIn = false
-                                role = ""
-                                orgID = ""
-                                print("✅ Signed out successfully")
-                            } catch {
-                                print("❌ Sign out failed: \(error.localizedDescription)")
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Account Section
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Account")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+
+                        if isLoggedIn {
+                            Button(action: signOut) {
+                                HStack {
+                                    Image(systemName: "arrow.backward.circle")
+                                    Text("Sign Out")
+                                        .fontWeight(.semibold)
+                                }
+                                .padding()
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Color(.systemGray6))
+                                .cornerRadius(12)
+                            }
+                        } else {
+                            Text("Not signed in")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    // Admin Tools Section
+                    if isLoggedIn && (role == "developer" || role == "admin") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Admin Tools")
+                                .font(.headline)
+                                .foregroundColor(.secondary)
+
+                            Button(action: { showAdminPanel = true }) {
+                                HStack {
+                                    Image(systemName: "gearshape")
+                                    Text("Manage Admins")
+                                        .fontWeight(.semibold)
+                                }
+                                .padding()
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Color(.systemGray6))
+                                .cornerRadius(12)
                             }
                         }
-                    } else {
-                        Text("Not signed in")
-                            .foregroundColor(.secondary)
                     }
-                }
 
-                if isLoggedIn && (role == "developer" || role == "admin") {
-                    Section(header: Text("Admin Tools")) {
-                        Button("Manage Admins") {
-                            showAdminPanel = true
-                        }
-                    }
+                    Spacer()
                 }
+                .padding()
             }
+            .background(Color.white.edgesIgnoringSafeArea(.all)) // ✅ white background
             .navigationTitle("Settings")
             .onAppear {
                 loadUserRole()
@@ -47,6 +71,18 @@ struct SettingsView: View {
             .sheet(isPresented: $showAdminPanel) {
                 AdminManagementView()
             }
+        }
+    }
+
+    func signOut() {
+        do {
+            try Auth.auth().signOut()
+            isLoggedIn = false
+            role = ""
+            orgID = ""
+            print("✅ Signed out successfully")
+        } catch {
+            print("❌ Sign out failed: \(error.localizedDescription)")
         }
     }
 
@@ -66,4 +102,3 @@ struct SettingsView: View {
         }
     }
 }
- 

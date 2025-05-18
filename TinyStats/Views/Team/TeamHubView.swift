@@ -1,22 +1,30 @@
 import SwiftUI
 
 struct TeamHubView: View {
+    let teamID: String
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    // Team Header
+                    // Main Header
+                    Text("Team Hub")
+                        .font(.largeTitle.bold())
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.top)
+
+                    // Team Info
                     VStack(spacing: 4) {
-                        Text("Sharks")
-                            .font(.largeTitle.bold())
+                        Text("Sharks") // To be dynamic later
+                            .font(.title2)
+                            .fontWeight(.semibold)
                         Text("12U Coed Team")
                             .foregroundColor(.gray)
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.top)
 
                     // Chat Button
-                    NavigationLink(destination: TeamChatView()) {
+                    NavigationLink(destination: TeamChatView(teamID: teamID)) {
                         HStack {
                             Image(systemName: "bubble.left.and.bubble.right.fill")
                             Text("Open Team Chat")
@@ -30,7 +38,7 @@ struct TeamHubView: View {
                     }
                     .padding(.horizontal)
 
-                    // Master Schedule
+                    // Upcoming Schedule
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Upcoming")
                             .font(.title2.bold())
@@ -46,7 +54,6 @@ struct TeamHubView: View {
                 }
                 .padding(.bottom)
             }
-            .navigationTitle("Team")
         }
     }
 }
