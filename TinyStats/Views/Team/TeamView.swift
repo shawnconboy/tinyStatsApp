@@ -6,6 +6,7 @@ struct TeamView: View {
     @State private var isChecking = true
     @State private var isApproved = false
     @State private var teamID: String?
+    @State private var goToAuth = false  // ✅ Track auth navigation
 
     var body: some View {
         NavigationStack {
@@ -17,6 +18,25 @@ struct TeamView: View {
                             .progressViewStyle(CircularProgressViewStyle())
                         Spacer()
                     }
+                } else if Auth.auth().currentUser == nil {
+                    VStack(spacing: 16) {
+                        Text("Sign in to view your team")
+                            .font(.title2.bold())
+
+                        Button {
+                            goToAuth = true
+                        } label: {
+                            Text("Sign In")
+                                .font(.headline)
+                                .padding()
+                                .frame(maxWidth: .infinity)
+                                .background(Color.blue)
+                                .foregroundColor(.white)
+                                .cornerRadius(10)
+                                .padding(.horizontal)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if let teamID = teamID, isApproved {
                     TeamHubView(teamID: teamID)
                 } else {
@@ -32,7 +52,12 @@ struct TeamView: View {
                 }
             }
             .onAppear {
-                if isChecking { fetchTeamStatus() }
+                if isChecking {
+                    fetchTeamStatus()
+                }
+            }
+            .navigationDestination(isPresented: $goToAuth) {
+                AuthView()
             }
         }
     }

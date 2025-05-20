@@ -1,7 +1,13 @@
 import SwiftUI
+import FirebaseFirestore
+import FirebaseFirestoreSwift
 
 struct TeamHubView: View {
     let teamID: String
+
+    @State private var teamName: String = ""
+    @State private var teamDescription: String = ""
+    @State private var schedule: [TeamScheduleItem] = []
 
     var body: some View {
         NavigationStack {
@@ -15,10 +21,10 @@ struct TeamHubView: View {
 
                     // Team Info
                     VStack(spacing: 4) {
-                        Text("Sharks") // To be dynamic later
+                        Text(teamName.isEmpty ? "Loading..." : teamName)
                             .font(.title2)
                             .fontWeight(.semibold)
-                        Text("12U Coed Team")
+                        Text(teamDescription)
                             .foregroundColor(.gray)
                     }
                     .frame(maxWidth: .infinity)
@@ -44,9 +50,15 @@ struct TeamHubView: View {
                             .font(.title2.bold())
                             .padding(.horizontal)
 
-                        ForEach(mockTeamSchedule) { item in
-                            TeamScheduleTile(item: item)
+                        if schedule.isEmpty {
+                            Text("No upcoming events.")
                                 .padding(.horizontal)
+                                .foregroundColor(.gray)
+                        } else {
+                            ForEach(schedule) { item in
+                                TeamScheduleTile(item: item)
+                                    .padding(.horizontal)
+                            }
                         }
                     }
 
@@ -54,6 +66,50 @@ struct TeamHubView: View {
                 }
                 .padding(.bottom)
             }
+            .onAppear {
+                loadTeamData()
+                loadSchedule()
+            }
         }
     }
+
+    private func loadTeamData() {
+        let db = Firestore.firestore()
+        db.collection("teams").document(teamID).getDocument { snapshot, error in
+            if let data = snapshot?.data() {
+                teamName = data["name"] as? String ?? "Team"
+                teamDescription = data["description"] as? String ?? ""
+                print("✅ Loaded team: \(teamName), \(teamDescription)")
+            } else {
+                print("❌ Failed to load team data: \(error?.localizedDescription ?? "Unknown error")")
+            }
+        }
+    }
+
+
+    private func loadSchedule() {
+        let db = Firestore.firestore()
+        db.collection("teams").document(teamID).collection("schedule")
+            .order(by: "date")
+            .getDocuments { snapshot, error in
+                if let docs = snapshot?.documents {
+                    print("📦 Found \(docs.count) schedule docs")
+                    for doc in docs {
+                        print("🔎 Raw schedule doc: \(doc.data())")
+                    }
+                    self.schedule = docs.compactMap { doc in
+                        do {
+                            return try doc.data(as: TeamScheduleItem.self)
+                        } catch {
+                            print("❌ Decode error: \(error.localizedDescription)")
+                            return nil
+                        }
+                    }
+                    print("✅ Loaded \(self.schedule.count) valid schedule items")
+                } else {
+                    print("❌ Failed to load schedule: \(error?.localizedDescription ?? "Unknown error")")
+                }
+            }
+    }
+
 }

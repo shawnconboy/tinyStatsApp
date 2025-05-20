@@ -20,6 +20,16 @@ struct SettingsView: View {
                             .foregroundColor(.secondary)
 
                         if isLoggedIn {
+                            HStack {
+                                Text("Signed in as")
+                                Spacer()
+                                Text(Auth.auth().currentUser?.email ?? "Unknown")
+                                    .foregroundColor(.gray)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                            }
+                            .padding(.vertical, 4)
+
                             Button(action: signOut) {
                                 HStack {
                                     Image(systemName: "arrow.backward.circle")
@@ -62,7 +72,7 @@ struct SettingsView: View {
                 }
                 .padding()
             }
-            .background(Color.white.edgesIgnoringSafeArea(.all)) // ✅ white background
+            .background(Color.white.edgesIgnoringSafeArea(.all))
             .navigationTitle("Settings")
             .onAppear {
                 loadUserRole()
