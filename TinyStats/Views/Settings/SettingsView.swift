@@ -80,6 +80,8 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showAdminPanel) {
                 AdminManagementView()
+                    .presentationDetents([.large]) // Covers majority of screen
+                    .presentationDragIndicator(.visible) // Classic grabber style
             }
         }
     }

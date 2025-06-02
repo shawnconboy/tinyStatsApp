@@ -64,7 +64,7 @@ struct AuthView: View {
     private func signIn() {
         Auth.auth().signIn(withEmail: email, password: password) { result, error in
             if let error = error {
-                errorMessage = error.localizedDescription
+               errorMessage = error.localizedDescription
             }
         }
     }

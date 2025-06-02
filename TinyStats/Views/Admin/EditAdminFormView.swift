@@ -1,26 +1,36 @@
 import SwiftUI
+import FirebaseFirestore
 
-struct AddAdminFormView: View {
-    let org: Organization
+struct EditAdminFormView: View {
+    let admin: UserRecord
+    let orgID: String
     var onComplete: () -> Void
 
-    @State private var email = ""
-    @State private var teamID = ""
-
+    @State private var email: String
+    @State private var teamID: String
     @State private var isSubmitting = false
     @State private var showSuccess = false
+    @Environment(\.dismiss) private var dismiss
+
+    init(admin: UserRecord, orgID: String, onComplete: @escaping () -> Void) {
+        self.admin = admin
+        self.orgID = orgID
+        self.onComplete = onComplete
+        _email = State(initialValue: admin.email)
+        _teamID = State(initialValue: admin.teamID)
+    }
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 32) {
                 VStack(spacing: 18) {
-                    Image(systemName: "person.crop.circle.badge.plus")
+                    Image(systemName: "person.crop.circle.badge.checkmark")
                         .resizable()
                         .scaledToFit()
                         .frame(width: 54, height: 54)
                         .foregroundColor(.accentColor)
                         .padding(.top, 8)
-                    Text("Add a new admin to \(org.name)")
+                    Text("Edit admin")
                         .font(.title3.bold())
                         .multilineTextAlignment(.center)
                         .foregroundColor(.primary)
@@ -48,14 +58,14 @@ struct AddAdminFormView: View {
                 .padding(.horizontal, 12)
 
                 if isSubmitting {
-                    ProgressView("Adding admin...")
+                    ProgressView("Saving...")
                         .progressViewStyle(CircularProgressViewStyle(tint: .accentColor))
                         .padding(.top, 8)
                 } else if showSuccess {
                     HStack(spacing: 8) {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundColor(.green)
-                        Text("Admin added!")
+                        Text("Admin updated!")
                             .foregroundColor(.green)
                     }
                     .font(.headline)
@@ -63,19 +73,26 @@ struct AddAdminFormView: View {
 
                 Button {
                     isSubmitting = true
-                    // TODO: Actually add to Firestore
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                    let db = Firestore.firestore()
+                    db.collection("users").document(admin.id).updateData([
+                        "email": email,
+                        "teamID": teamID
+                    ]) { error in
                         isSubmitting = false
-                        showSuccess = true
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.1) {
-                            showSuccess = false
-                            onComplete()
+                        if error == nil {
+                            showSuccess = true
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                                showSuccess = false
+                                onComplete()
+                                dismiss()
+                            }
                         }
+                        // Optionally handle error
                     }
                 } label: {
                     HStack {
-                        Image(systemName: "plus.circle.fill")
-                        Text("Add Admin")
+                        Image(systemName: "checkmark")
+                        Text("Save Changes")
                             .fontWeight(.bold)
                     }
                     .frame(maxWidth: .infinity)
@@ -89,11 +106,11 @@ struct AddAdminFormView: View {
 
                 Spacer()
             }
-            .navigationTitle("Add Admin")
+            .navigationTitle("Edit Admin")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) {
-                        onComplete()
+                        dismiss()
                     }
                 }
             }

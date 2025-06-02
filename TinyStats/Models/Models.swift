@@ -32,11 +32,6 @@ let mockLiveGames = [
 
 // MARK: - Admin Panel Models
 
-struct Organization: Identifiable {
-    let id: String
-    let name: String
-}
-
 struct UserRecord: Identifiable {
     let id: String
     let email: String
@@ -46,5 +41,7 @@ struct UserRecord: Identifiable {
 struct Team: Identifiable {
     let id: String
     let name: String
+    let ageGroup: String
     let playerCount: Int
+    let orgID: String
 }
