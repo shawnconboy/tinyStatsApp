@@ -7,6 +7,7 @@ struct OrgTeamsView: View {
     @State private var teams: [Team] = []
     @State private var selectedTeam: Team? = nil
     @State private var showEditModal = false
+    @State private var showDetailSheet = false
     @State private var showDeleteAlert = false
     @State private var teamToDelete: Team? = nil
 
@@ -45,7 +46,7 @@ struct OrgTeamsView: View {
                     .cornerRadius(12)
                     .onTapGesture {
                         selectedTeam = team
-                        showEditModal = true
+                        showDetailSheet = true
                     }
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         Button(role: .destructive) {
@@ -65,9 +66,14 @@ struct OrgTeamsView: View {
             }
         }
         .onAppear(perform: fetchTeams)
+        .sheet(isPresented: $showDetailSheet, onDismiss: { selectedTeam = nil }) {
+            if let team = selectedTeam {
+                TeamDetailSheet(team: team)
+            }
+        }
         .sheet(isPresented: $showEditModal, onDismiss: { selectedTeam = nil }) {
             if let team = selectedTeam {
-                EditTeamFormView(team: team) {
+                 EditTeamFormView(team: team) {
                     showEditModal = false
                     fetchTeams()
                 }

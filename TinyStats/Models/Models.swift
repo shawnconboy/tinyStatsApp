@@ -36,6 +36,7 @@ struct UserRecord: Identifiable {
     let id: String
     let email: String
     let teamID: String
+    let name: String?
 }
 
 struct Team: Identifiable {

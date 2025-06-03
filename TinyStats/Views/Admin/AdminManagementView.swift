@@ -3,12 +3,12 @@ import FirebaseFirestore
 
 struct AdminManagementView: View {
     @State private var organizations: [Organization] = []
-    @State private var expandedOrgID: String?
     @State private var isLoading = true
 
     @State private var selectedOrg: Organization? = nil
     @State private var showAddAdminModal = false
     @State private var showAddTeamModal = false
+    @State private var selectedDetailOrg: Organization? = nil
 
     var body: some View {
         NavigationStack {
@@ -45,66 +45,23 @@ struct AdminManagementView: View {
                             .padding(.vertical, 60)
                         } else {
                             ForEach(organizations) { org in
-                                VStack(alignment: .leading, spacing: 0) {
-                                    Button(action: {
-                                        withAnimation(.spring()) {
-                                            expandedOrgID = expandedOrgID == org.id ? nil : org.id
-                                        }
-                                    }) {
-                                        HStack {
-                                            Text(org.name)
-                                                .font(.headline)
-                                                .foregroundColor(.primary)
-                                            Spacer()
-                                            Image(systemName: expandedOrgID == org.id ? "chevron.up.circle.fill" : "chevron.down.circle")
-                                                .foregroundColor(.accentColor)
-                                                .rotationEffect(.degrees(expandedOrgID == org.id ? 180 : 0))
-                                                .animation(.easeInOut, value: expandedOrgID == org.id)
-                                        }
-                                        .padding(.vertical, 18)
-                                        .padding(.horizontal, 20)
-                                        .background(Color(.systemGray5).opacity(0.5))
-                                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                Button(action: {
+                                    selectedDetailOrg = org
+                                }) {
+                                    HStack {
+                                        Text(org.name)
+                                            .font(.headline)
+                                            .foregroundColor(.primary)
+                                        Spacer()
+                                        Image(systemName: "chevron.right.circle")
+                                            .foregroundColor(.accentColor)
                                     }
-                                    .buttonStyle(PlainButtonStyle())
-
-                                    if expandedOrgID == org.id {
-                                        VStack(alignment: .leading, spacing: 16) {
-                                            OrgAdminsView(orgID: org.id) {
-                                                selectedOrg = org
-                                                showAddAdminModal = true
-                                            }
-                                            .padding(.top, 8)
-                                            .padding(.bottom, 12)
-                                            .padding(.horizontal, 8)
-                                            .background(Color(.systemBackground))
-                                            .cornerRadius(12)
-                                            .shadow(radius: 1, y: 1)
-
-                                            OrgTeamsView(orgID: org.id) {
-                                                selectedOrg = org
-                                                showAddTeamModal = true
-                                            }
-                                            .padding(.top, 4)
-                                            .padding(.bottom, 12)
-                                            .padding(.horizontal, 8)
-
-                                            Button {
-                                                selectedOrg = org
-                                            } label: {
-                                                Label("Edit Organization", systemImage: "pencil")
-                                                    .font(.body.bold())
-                                            }
-                                            .buttonStyle(.borderedProminent)
-                                            .tint(.accentColor)
-                                            .padding(.top, 10)
-                                            .padding(.horizontal, 8)
-                                        }
-                                        .padding(.horizontal, 8)
-                                        .padding(.bottom, 12)
-                                        .transition(.opacity.combined(with: .move(edge: .top)))
-                                    }
+                                    .padding(.vertical, 18)
+                                    .padding(.horizontal, 20)
+                                    .background(Color(.systemGray5).opacity(0.5))
+                                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                                 }
+                                .buttonStyle(PlainButtonStyle())
                                 .background(Color(.systemGray6))
                                 .cornerRadius(18)
                                 .shadow(color: Color(.black).opacity(0.07), radius: 4, x: 0, y: 2)
@@ -141,6 +98,13 @@ struct AdminManagementView: View {
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
             }
+        }
+        .sheet(item: $selectedDetailOrg) { org in
+            OrganizationDetailSheet(org: org,
+                                   showAddAdminModal: $showAddAdminModal,
+                                   showAddTeamModal: $showAddTeamModal,
+                                   selectedOrg: $selectedOrg,
+                                   fetchOrganizations: fetchOrganizations)
         }
     }
 

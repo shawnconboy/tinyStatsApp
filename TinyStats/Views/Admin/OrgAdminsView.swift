@@ -144,7 +144,8 @@ struct OrgAdminsView: View {
                         UserRecord(
                             id: doc.documentID,
                             email: doc["email"] as? String ?? "(no email)",
-                            teamID: doc["teamID"] as? String ?? "-"
+                            teamID: doc["teamID"] as? String ?? "-",
+                            name: doc["name"] as? String
                         )
                     }
                     DispatchQueue.main.async {

@@ -13,7 +13,7 @@ struct EditAdminFormView: View {
     @Environment(\.dismiss) private var dismiss
 
     init(admin: UserRecord, orgID: String, onComplete: @escaping () -> Void) {
-        self.admin = admin
+        self.admin = UserRecord(id: admin.id, email: admin.email, teamID: admin.teamID, name: admin.name)
         self.orgID = orgID
         self.onComplete = onComplete
         _email = State(initialValue: admin.email)
