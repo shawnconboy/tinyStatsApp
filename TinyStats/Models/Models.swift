@@ -46,3 +46,10 @@ struct Team: Identifiable {
     let playerCount: Int
     let orgID: String
 }
+
+struct Organization: Identifiable, Codable, Hashable {
+    var id: String
+    var name: String
+    var city: String?
+    var state: String?
+}

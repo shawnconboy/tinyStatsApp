@@ -9,5 +9,5 @@ struct TeamScheduleItem: Identifiable, Codable {
     var time: String
     var location: String
     var snackParent: String?
-    var eventNote: String?
+    var notes: String?
 }

@@ -8,6 +8,8 @@ struct TeamHubView: View {
     @State private var teamName: String = ""
     @State private var teamDescription: String = ""
     @State private var schedule: [TeamScheduleItem] = []
+    @State private var selectedScheduleItem: TeamScheduleItem? = nil
+    @State private var showGameDetailSheet: Bool = false
 
     var body: some View {
         NavigationStack {
@@ -56,8 +58,16 @@ struct TeamHubView: View {
                                 .foregroundColor(.gray)
                         } else {
                             ForEach(schedule) { item in
+                                let isUpcomingGame = item.type == "Game" && item.date >= Calendar.current.startOfDay(for: Date())
                                 TeamScheduleTile(item: item)
                                     .padding(.horizontal)
+                                    .contentShape(Rectangle())
+                                    .onTapGesture {
+                                        if isUpcomingGame {
+                                            selectedScheduleItem = item
+                                            showGameDetailSheet = true
+                                        }
+                                    }
                             }
                         }
                     }
@@ -69,6 +79,11 @@ struct TeamHubView: View {
             .onAppear {
                 loadTeamData()
                 loadSchedule()
+            }
+        }
+        .sheet(isPresented: $showGameDetailSheet, onDismiss: { selectedScheduleItem = nil }) {
+            if let item = selectedScheduleItem {
+                GameDetailSheet(item: item)
             }
         }
     }
@@ -85,7 +100,6 @@ struct TeamHubView: View {
             }
         }
     }
-
 
     private func loadSchedule() {
         let db = Firestore.firestore()
@@ -111,5 +125,4 @@ struct TeamHubView: View {
                 }
             }
     }
-
 }

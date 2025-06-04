@@ -26,7 +26,7 @@ struct TeamScheduleTile: View {
                     .font(.caption)
             }
 
-            if let note = item.eventNote {
+            if let note = item.notes {
                 Text("📸 \(note)")
                     .font(.caption2)
                     .foregroundColor(.blue)

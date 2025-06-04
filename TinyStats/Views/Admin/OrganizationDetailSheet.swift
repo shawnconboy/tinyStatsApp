@@ -16,8 +16,9 @@ struct OrganizationDetailSheet: View {
                     .padding(.horizontal, 20)
                     .padding(.bottom, 8)
 
+                // Admins Section
                 OrgAdminsView(orgID: org.id) {
-                    // Only set showAddAdminModal, do not set selectedOrg here
+                    selectedOrg = org // ✅ Ensure correct org is passed
                     showAddAdminModal = true
                 }
                 .padding(.top, 16)
@@ -27,8 +28,9 @@ struct OrganizationDetailSheet: View {
                 .cornerRadius(14)
                 .shadow(radius: 2, y: 2)
 
+                // Teams Section
                 OrgTeamsView(orgID: org.id) {
-                    // Only set showAddTeamModal, do not set selectedOrg here
+                    selectedOrg = org // ✅ Ensure correct org is passed
                     showAddTeamModal = true
                 }
                 .padding(.top, 16)
@@ -38,8 +40,9 @@ struct OrganizationDetailSheet: View {
                 .cornerRadius(14)
                 .shadow(radius: 2, y: 2)
 
+                // Edit Org Button
                 Button {
-                    selectedOrg = org // Only set when explicitly tapped
+                    selectedOrg = org
                 } label: {
                     Label("Edit Organization", systemImage: "pencil")
                         .font(.body.bold())
@@ -51,7 +54,6 @@ struct OrganizationDetailSheet: View {
                 .padding(.top, 18)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 20)
-
             }
             .padding(.horizontal, 8)
             .padding(.bottom, 24)

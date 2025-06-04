@@ -1,3 +1,4 @@
+// ... all imports unchanged ...
 import SwiftUI
 import FirebaseFirestore
 
@@ -10,6 +11,7 @@ struct TeamScheduleManager: View {
     @State private var showEditItem = false
     @State private var showDeleteAlert = false
     @State private var itemToDelete: TeamScheduleItem? = nil
+    @State private var showGameDetailSheet = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -33,6 +35,7 @@ struct TeamScheduleManager: View {
                 } else {
                     List {
                         ForEach(schedule) { item in
+                            let isUpcomingGame = item.type == "Game" && item.date >= Calendar.current.startOfDay(for: Date())
                             ScheduleItemRowView(item: item, onEdit: {
                                 selectedItem = item
                                 showEditItem = true
@@ -40,10 +43,16 @@ struct TeamScheduleManager: View {
                                 itemToDelete = item
                                 showDeleteAlert = true
                             })
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                if isUpcomingGame {
+                                    selectedItem = item
+                                    showGameDetailSheet = true
+                                }
+                            }
                         }
-                        .onDelete(perform: deleteItemsFromList) // Optional: Add swipe to delete
+                        .onDelete(perform: deleteItemsFromList)
                     }
-                    //.listStyle(.plain) // Optional: Adjust list style if needed
                 }
             }
         }
@@ -63,6 +72,11 @@ struct TeamScheduleManager: View {
                     showEditItem = false
                     fetchSchedule()
                 }
+            }
+        }
+        .sheet(isPresented: $showGameDetailSheet, onDismiss: { selectedItem = nil }) {
+            if let item = selectedItem {
+                GameDetailSheet(item: item)
             }
         }
         .alert("Delete Schedule Item?", isPresented: $showDeleteAlert, presenting: itemToDelete) { item in
@@ -86,11 +100,11 @@ struct TeamScheduleManager: View {
                             id: doc.documentID,
                             date: (doc["date"] as? Timestamp)?.dateValue() ?? Date(),
                             type: doc["type"] as? String ?? "",
-                            opponent: doc["opponent"] as? String ?? "",
+                            opponent: doc["opponent"] as? String,
                             time: doc["time"] as? String ?? "",
                             location: doc["location"] as? String ?? "",
-                            snackParent: doc["snackParent"] as? String ?? "",
-                            eventNote: doc["eventNote"] as? String ?? ""
+                            snackParent: doc["snackParent"] as? String,
+                            notes: doc["notes"] as? String
                         )
                     }
                     DispatchQueue.main.async {
@@ -107,18 +121,16 @@ struct TeamScheduleManager: View {
 
     private func deleteItem(_ item: TeamScheduleItem) {
         let db = Firestore.firestore()
-        guard let itemId = item.id else { return } // Ensure item.id is not nil
+        guard let itemId = item.id else { return }
         db.collection("teams").document(team.id).collection("schedule").document(itemId).delete { error in
             if error == nil {
                 fetchSchedule()
             } else {
-                // Optional: Handle error, e.g., show an alert
                 print("Error deleting item: \(error?.localizedDescription ?? "Unknown error")")
             }
         }
     }
 
-    // Optional: Function for swipe to delete in List
     private func deleteItemsFromList(at offsets: IndexSet) {
         let itemsToDelete = offsets.map { schedule[$0] }
         for item in itemsToDelete {
@@ -127,7 +139,6 @@ struct TeamScheduleManager: View {
     }
 }
 
-// New View for displaying each schedule item row
 struct ScheduleItemRowView: View {
     let item: TeamScheduleItem
     var onEdit: () -> Void
@@ -164,7 +175,6 @@ struct ScheduleItemRowView: View {
     }
 }
 
-// Placeholder for Add/Edit forms (implement as needed)
 struct AddScheduleItemFormView: View {
     let team: Team
     var onComplete: () -> Void
@@ -174,7 +184,8 @@ struct AddScheduleItemFormView: View {
     @State private var time = ""
     @State private var location = ""
     @State private var snackParent = ""
-    @State private var eventNote = ""
+    @State private var notes = ""
+
     var body: some View {
         NavigationStack {
             Form {
@@ -185,7 +196,7 @@ struct AddScheduleItemFormView: View {
                     TextField("Time", text: $time)
                     TextField("Location", text: $location)
                     TextField("Snack Parent", text: $snackParent)
-                    TextField("Event Note", text: $eventNote)
+                    TextField("Notes", text: $notes)
                 }
             }
             .navigationTitle("Add Schedule Item")
@@ -201,16 +212,17 @@ struct AddScheduleItemFormView: View {
             }
         }
     }
+
     private func addItem() {
         let db = Firestore.firestore()
         let itemData: [String: Any] = [
-            "type": type ?? "",
-            "opponent": opponent ?? "",
+            "type": type,
+            "opponent": opponent,
             "date": Timestamp(date: date),
-            "time": time ?? "",
-            "location": location ?? "",
-            "snackParent": snackParent ?? "",
-            "eventNote": eventNote ?? ""
+            "time": time,
+            "location": location,
+            "snackParent": snackParent,
+            "notes": notes
         ]
         db.collection("teams").document(team.id).collection("schedule").addDocument(data: itemData) { error in
             onComplete()
@@ -228,7 +240,8 @@ struct EditScheduleItemFormView: View {
     @State private var time: String
     @State private var location: String
     @State private var snackParent: String
-    @State private var eventNote: String
+    @State private var notes: String
+
     init(item: TeamScheduleItem, team: Team, onComplete: @escaping () -> Void) {
         self.item = item
         self.team = team
@@ -239,8 +252,9 @@ struct EditScheduleItemFormView: View {
         _time = State(initialValue: item.time ?? "")
         _location = State(initialValue: item.location ?? "")
         _snackParent = State(initialValue: item.snackParent ?? "")
-        _eventNote = State(initialValue: item.eventNote ?? "")
+        _notes = State(initialValue: item.notes ?? "")
     }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -251,7 +265,7 @@ struct EditScheduleItemFormView: View {
                     TextField("Time", text: $time)
                     TextField("Location", text: $location)
                     TextField("Snack Parent", text: $snackParent)
-                    TextField("Event Note", text: $eventNote)
+                    TextField("Notes", text: $notes)
                 }
             }
             .navigationTitle("Edit Schedule Item")
@@ -267,6 +281,7 @@ struct EditScheduleItemFormView: View {
             }
         }
     }
+
     private func updateItem() {
         let db = Firestore.firestore()
         db.collection("teams").document(team.id).collection("schedule").document(item.id ?? "").updateData([
@@ -276,7 +291,7 @@ struct EditScheduleItemFormView: View {
             "time": time,
             "location": location,
             "snackParent": snackParent,
-            "eventNote": eventNote
+            "notes": notes
         ]) { error in
             onComplete()
         }

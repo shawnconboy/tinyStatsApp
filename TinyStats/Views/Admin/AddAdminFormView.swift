@@ -1,4 +1,5 @@
 import SwiftUI
+import FirebaseFirestore
 
 struct AddAdminFormView: View {
     let org: Organization
@@ -20,6 +21,7 @@ struct AddAdminFormView: View {
                         .frame(width: 54, height: 54)
                         .foregroundColor(.accentColor)
                         .padding(.top, 8)
+
                     Text("Add a new admin to \(org.name)")
                         .font(.title3.bold())
                         .multilineTextAlignment(.center)
@@ -38,6 +40,7 @@ struct AddAdminFormView: View {
                         .background(Color(.systemGray6))
                         .cornerRadius(12)
                         .autocapitalization(.none)
+
                     TextField("Team ID", text: $teamID)
                         .padding(.vertical, 14)
                         .padding(.horizontal, 16)
@@ -63,9 +66,27 @@ struct AddAdminFormView: View {
 
                 Button {
                     isSubmitting = true
-                    // TODO: Actually add to Firestore
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+
+                    let db = Firestore.firestore()
+                    let newAdmin: [String: Any] = [
+                        "email": email,
+                        "displayName": "",
+                        "role": "admin",
+                        "status": "approved",
+                        "isApproved": true,
+                        "orgID": org.id,  // ✅ FIXED: no more placeholder
+                        "teamID": teamID,
+                        "createdAt": Timestamp()
+                    ]
+
+                    db.collection("users").addDocument(data: newAdmin) { error in
                         isSubmitting = false
+
+                        if let error = error {
+                            print("❌ Failed to add admin: \(error.localizedDescription)")
+                            return
+                        }
+
                         showSuccess = true
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.1) {
                             showSuccess = false

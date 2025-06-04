@@ -8,18 +8,32 @@ struct AdminManagementView: View {
     @State private var selectedOrg: Organization? = nil
     @State private var showAddAdminModal = false
     @State private var showAddTeamModal = false
+    @State private var showAddOrgModal = false
     @State private var selectedDetailOrg: Organization? = nil
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
+                    // Header with Add Button
                     HStack {
-                        Image(systemName: "person.3.fill")
-                            .foregroundColor(.accentColor)
-                            .font(.system(size: 32))
-                        Text("Admin Control Center")
-                            .font(.largeTitle.bold())
+                        HStack {
+                            Image(systemName: "person.3.fill")
+                                .foregroundColor(.accentColor)
+                                .font(.system(size: 32))
+                            Text("Admin Control Center")
+                                .font(.largeTitle.bold())
+                        }
+
+                        Spacer()
+
+                        Button(action: {
+                            showAddOrgModal = true
+                        }) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.title2)
+                                .foregroundColor(.accentColor)
+                        }
                     }
                     .padding(.horizontal, 24)
                     .padding(.top, 24)
@@ -28,7 +42,7 @@ struct AdminManagementView: View {
                         ProgressView("Loading organizations...")
                             .progressViewStyle(CircularProgressViewStyle(tint: .accentColor))
                             .padding(.vertical, 40)
-                    
+
                     } else {
                         if organizations.isEmpty {
                             VStack(spacing: 20) {
@@ -75,14 +89,18 @@ struct AdminManagementView: View {
                 .padding(.horizontal, 0)
             }
             .onAppear(perform: fetchOrganizations)
-            .navigationTitle("Manage Admins")
+
+            // Add Admin
             .sheet(isPresented: $showAddAdminModal) {
                 AddAdminFormView(org: selectedOrg ?? Organization(id: "placeholder", name: "Unknown Org")) {
                     showAddAdminModal = false
                 }
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
+                .padding()
             }
+
+            // Add Team
             .sheet(isPresented: $showAddTeamModal) {
                 AddTeamFormView(org: selectedOrg ?? Organization(id: "placeholder", name: "Unknown Org")) {
                     showAddTeamModal = false
@@ -90,6 +108,8 @@ struct AdminManagementView: View {
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
             }
+
+            // Edit Org
             .sheet(item: $selectedOrg, onDismiss: { selectedOrg = nil }) { org in
                 EditOrgFormView(org: org) {
                     selectedOrg = nil
@@ -98,13 +118,27 @@ struct AdminManagementView: View {
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
             }
+
+            // Add Org
+            .sheet(isPresented: $showAddOrgModal) {
+                AddOrganizationFormView {
+                    showAddOrgModal = false
+                    fetchOrganizations()
+                }
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+            }
         }
+
+        // Org Detail Sheet
         .sheet(item: $selectedDetailOrg) { org in
-            OrganizationDetailSheet(org: org,
-                                   showAddAdminModal: $showAddAdminModal,
-                                   showAddTeamModal: $showAddTeamModal,
-                                   selectedOrg: $selectedOrg,
-                                   fetchOrganizations: fetchOrganizations)
+            OrganizationDetailSheet(
+                org: org,
+                showAddAdminModal: $showAddAdminModal,
+                showAddTeamModal: $showAddTeamModal,
+                selectedOrg: $selectedOrg,
+                fetchOrganizations: fetchOrganizations
+            )
         }
     }
 
@@ -113,15 +147,15 @@ struct AdminManagementView: View {
         db.collection("organizations").getDocuments { snapshot, error in
             if let docs = snapshot?.documents {
                 self.organizations = docs.map { doc in
-                    Organization(id: doc.documentID, name: doc["name"] as? String ?? "Unnamed Org")
+                    Organization(
+                        id: doc.documentID,
+                        name: doc["name"] as? String ?? "Unnamed Org",
+                        city: doc["city"] as? String,
+                        state: doc["state"] as? String
+                    )
                 }
             }
             isLoading = false
         }
     }
-}
-
-struct Organization: Identifiable {
-    var id: String
-    var name: String
 }
