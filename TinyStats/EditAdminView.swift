@@ -5,18 +5,18 @@ struct EditAdminView: View {
     @Environment(\.dismiss) var dismiss
 
     var admin: Admin
-    @Binding var refresh: () -> Void
+    var refresh: () -> Void
 
     @State private var name: String
     @State private var email: String
     @State private var role: String
 
-    init(admin: Admin, refresh: Binding<() -> Void>) {
+    init(admin: Admin, refresh: @escaping () -> Void) {
         self.admin = admin
-        _refresh = refresh
+        self.refresh = refresh
         _name = State(initialValue: admin.name)
-        _email = State(initialValue: admin.email ?? "")  // ✅ Fixed optional
-        _role = State(initialValue: admin.role ?? "admin")  // ✅ Fixed optional
+        _email = State(initialValue: admin.email ?? "")
+        _role = State(initialValue: admin.role ?? "admin")
     }
 
     var body: some View {

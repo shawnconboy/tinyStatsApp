@@ -15,8 +15,8 @@ struct EditMemberView: View {
         self.member = member
         self.refresh = refresh
         _parentName = State(initialValue: member.parentName)
-        _childName = State(initialValue: member.childName ?? "")
-        _jerseyNumber = State(initialValue: member.jerseyNumber != nil ? String(member.jerseyNumber) : "")
+        _childName = State(initialValue: member.childName)
+        _jerseyNumber = State(initialValue: String(member.jerseyNumber))
     }
 
     var body: some View {
@@ -26,6 +26,7 @@ struct EditMemberView: View {
                     TextField("Parent Name", text: $parentName)
                     TextField("Child Name", text: $childName)
                     TextField("Jersey Number", text: $jerseyNumber)
+                        .keyboardType(.numberPad)
                 }
 
                 Section {
@@ -42,9 +43,9 @@ struct EditMemberView: View {
     func updateMember() {
         let db = Firestore.firestore()
         db.collection("members").document(member._id).updateData([
-            "parentName": parentName,
+            "name": parentName,
             "childName": childName,
-            "jerseyNumber": jerseyNumber
+            "playerNumber": Int(jerseyNumber) ?? 0
         ]) { error in
             if let error = error {
                 print("Error updating member: \(error.localizedDescription)")
