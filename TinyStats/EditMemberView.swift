@@ -50,8 +50,11 @@ struct EditMemberView: View {
             if let error = error {
                 print("Error updating member: \(error.localizedDescription)")
             } else {
-                refresh()
-                dismiss()
+                // Slight delay to ensure Firestore commits before UI refresh
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    refresh()
+                    dismiss()
+                }
             }
         }
     }

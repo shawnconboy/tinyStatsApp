@@ -26,11 +26,19 @@ struct Member: Identifiable, Equatable {
     }
 }
 
-struct Team: Identifiable {
+struct Team: Identifiable, Equatable, Hashable {
     var id: String { _id }
     let _id: String
     let name: String
     let ageGroup: String
     let organizationID: String
+
+    static func == (lhs: Team, rhs: Team) -> Bool {
+        lhs._id == rhs._id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(_id)
+    }
 }
 
