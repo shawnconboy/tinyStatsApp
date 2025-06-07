@@ -41,13 +41,21 @@ struct EditAdminView: View {
                         updateAdmin()
                     }
                 }
+
+                Section {
+                    Button(role: .destructive) {
+                        deleteAdmin()
+                    } label: {
+                        Label("Delete Admin", systemImage: "trash")
+                    }
+                }
             }
             .navigationTitle("Edit Admin")
             .navigationBarTitleDisplayMode(.inline)
         }
     }
 
-    func updateAdmin() {
+    private func updateAdmin() {
         let db = Firestore.firestore()
         db.collection("admins").document(admin._id).updateData([
             "name": name,
@@ -59,6 +67,20 @@ struct EditAdminView: View {
             } else {
                 refresh()
                 dismiss()
+            }
+        }
+    }
+
+    private func deleteAdmin() {
+        let db = Firestore.firestore()
+        db.collection("admins").document(admin._id).delete { error in
+            if let error = error {
+                print("Error deleting admin: \(error.localizedDescription)")
+            } else {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    refresh()
+                    dismiss()
+                }
             }
         }
     }

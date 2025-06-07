@@ -34,13 +34,21 @@ struct EditMemberView: View {
                         updateMember()
                     }
                 }
+
+                Section {
+                    Button(role: .destructive) {
+                        deleteMember()
+                    } label: {
+                        Label("Delete Member", systemImage: "trash")
+                    }
+                }
             }
             .navigationTitle("Edit Member")
             .navigationBarTitleDisplayMode(.inline)
         }
     }
 
-    func updateMember() {
+    private func updateMember() {
         let db = Firestore.firestore()
         db.collection("members").document(member._id).updateData([
             "name": parentName,
@@ -50,7 +58,20 @@ struct EditMemberView: View {
             if let error = error {
                 print("Error updating member: \(error.localizedDescription)")
             } else {
-                // Slight delay to ensure Firestore commits before UI refresh
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    refresh()
+                    dismiss()
+                }
+            }
+        }
+    }
+
+    private func deleteMember() {
+        let db = Firestore.firestore()
+        db.collection("members").document(member._id).delete { error in
+            if let error = error {
+                print("Error deleting member: \(error.localizedDescription)")
+            } else {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                     refresh()
                     dismiss()
