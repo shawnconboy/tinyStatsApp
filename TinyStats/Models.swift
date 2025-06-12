@@ -1,4 +1,6 @@
 import Foundation
+import Firebase
+// Import Event model for use in views
 
 struct Admin: Identifiable, Equatable {
     var id: String { _id }
