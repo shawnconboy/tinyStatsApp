@@ -21,68 +21,67 @@ struct EditEventView: View, Identifiable {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 24) {
-                Text("Edit Event")
-                    .font(.title2.bold())
-                    .padding(.top, 12)
-
-                VStack(alignment: .leading, spacing: 16) {
-                    Group {
-                        TextField("Title", text: $eventTitle)
-                        TextField("Location", text: $eventLocation)
-                        DatePicker("Date & Time", selection: $eventDate, displayedComponents: [.date, .hourAndMinute])
-                            .labelsHidden()
-                        HStack {
-                            Text("Team A:")
-                            TextField("Team A Name", text: $teamAName)
-                        }
-                        HStack {
-                            Text("Team B:")
-                            TextField("Team B Name", text: $teamBName)
-                        }
-                        Picker("Snack Volunteer", selection: $selectedVolunteerID) {
-                            Text("None").tag(String?.none)
-                            ForEach(members, id: \.id) { member in
-                                Text(member.parentName).tag(Optional(member._id))
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Remove the duplicate header here (keep only navigationTitle)
+                    VStack(alignment: .leading, spacing: 16) {
+                        Group {
+                            TextField("Title", text: $eventTitle)
+                            TextField("Location", text: $eventLocation)
+                            DatePicker("Date & Time", selection: $eventDate, displayedComponents: [.date, .hourAndMinute])
+                                .labelsHidden()
+                            HStack {
+                                Text("Team A:")
+                                TextField("Team A Name", text: $teamAName)
                             }
+                            HStack {
+                                Text("Team B:")
+                                TextField("Team B Name", text: $teamBName)
+                            }
+                            Picker("Snack Volunteer", selection: $selectedVolunteerID) {
+                                Text("None").tag(String?.none)
+                                ForEach(members, id: \.id) { member in
+                                    Text(member.parentName).tag(Optional(member._id))
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            TextField("Notes (e.g. Picture Day)", text: $eventNote)
                         }
-                        .pickerStyle(.menu)
-                        TextField("Notes (e.g. Picture Day)", text: $eventNote)
+                        .padding(.vertical, 6)
+                        .textFieldStyle(PlainTextFieldStyle())
                     }
-                    .padding(.vertical, 6)
-                    .textFieldStyle(PlainTextFieldStyle())
-                }
-                .padding()
-                .background(Color(.secondarySystemBackground))
-                .cornerRadius(14)
-                .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
+                    .padding()
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(14)
+                    .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
 
-                Button(action: saveEvent) {
-                    Text("Save Changes")
+                    Button(action: saveEvent) {
+                        Text("Save Changes")
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                    }
+                    .buttonStyle(.plain)
+
+                    Button(action: deleteEvent) {
+                        HStack {
+                            Image(systemName: "trash")
+                            Text("Delete Event")
+                        }
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.blue)
-                        .foregroundColor(.white)
+                        .background(Color.red.opacity(0.1))
+                        .foregroundColor(.red)
                         .cornerRadius(10)
-                }
-                .buttonStyle(.plain)
-
-                Button(action: deleteEvent) {
-                    HStack {
-                        Image(systemName: "trash")
-                        Text("Delete Event")
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.red.opacity(0.1))
-                    .foregroundColor(.red)
-                    .cornerRadius(10)
-                }
-                .buttonStyle(.plain)
+                    .buttonStyle(.plain)
 
-                Spacer()
+                    Spacer()
+                }
+                .padding()
             }
-            .padding()
             .navigationTitle("Edit Event")
             .navigationBarTitleDisplayMode(.inline)
         }

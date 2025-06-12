@@ -32,24 +32,26 @@ class TeamHubViewModel: ObservableObject {
 
     func fetchEvents() {
         let db = Firestore.firestore()
-        db.collection("teams").document(team.id).collection("events").getDocuments { snapshot, _ in
-            guard let docs = snapshot?.documents else { return }
-            self.events = docs.map { doc in
-                let data = doc.data()
-                let eventDate: Date = (data["eventDate"] as? Timestamp)?.dateValue() ?? Date()
-                return Event(
-                    _id: doc.documentID,
-                    teamAName: data["teamAName"] as? String ?? "",
-                    teamBName: data["teamBName"] as? String ?? "",
-                    snackVolunteerID: data["snackVolunteerID"] as? String,
-                    snackVolunteerName: data["snackVolunteerName"] as? String,
-                    eventDate: eventDate,
-                    title: data["title"] as? String ?? "",
-                    location: data["location"] as? String ?? "",
-                    note: data["note"] as? String ?? ""
-                )
+        db.collection("teams").document(team.id).collection("events")
+            .order(by: "eventDate", descending: false) // <-- sort by soonest first
+            .getDocuments { snapshot, _ in
+                guard let docs = snapshot?.documents else { return }
+                self.events = docs.map { doc in
+                    let data = doc.data()
+                    let eventDate: Date = (data["eventDate"] as? Timestamp)?.dateValue() ?? Date()
+                    return Event(
+                        _id: doc.documentID,
+                        teamAName: data["teamAName"] as? String ?? "",
+                        teamBName: data["teamBName"] as? String ?? "",
+                        snackVolunteerID: data["snackVolunteerID"] as? String,
+                        snackVolunteerName: data["snackVolunteerName"] as? String,
+                        eventDate: eventDate,
+                        title: data["title"] as? String ?? "",
+                        location: data["location"] as? String ?? "",
+                        note: data["note"] as? String ?? ""
+                    )
+                }
             }
-        }
     }
 
     func addEvent(teamAName: String, teamBName: String, snackVolunteerID: String?, snackVolunteerName: String?, completion: @escaping () -> Void) {

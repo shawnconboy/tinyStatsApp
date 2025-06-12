@@ -53,14 +53,24 @@ struct TeamHubView: View {
                 }
                 .padding(.leading, 4)
 
-                ForEach(viewModel.events) { event in
-                    Button(action: {
-                        selectedEvent = event
-                    }) {
-                        EventCard(event: event)
+                // Scrollable event cards, fixed height (about 3 cards)
+                GeometryReader { geo in
+                    ScrollView {
+                        VStack(spacing: 12) {
+                            ForEach(viewModel.events) { event in
+                                Button(action: {
+                                    selectedEvent = event
+                                }) {
+                                    EventCard(event: event)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.vertical, 4)
                     }
-                    .buttonStyle(.plain)
+                    .frame(height: min(geo.size.height, 3 * 92)) // ~92pt per card (padding + shadow)
                 }
+                .frame(height: 3 * 92) // Fixed height for 3 cards
             }
             .padding(.top, 8)
 
@@ -69,7 +79,6 @@ struct TeamHubView: View {
         .padding()
         .navigationTitle("Team Hub")
         .navigationBarTitleDisplayMode(.inline)
-        // SIMPLIFY: Use .sheet(item:onDismiss:content:) directly on $selectedEvent
         .sheet(item: $selectedEvent, onDismiss: { viewModel.fetchEvents() }) { event in
             EditEventView(
                 event: event,
