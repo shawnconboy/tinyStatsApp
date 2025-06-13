@@ -8,8 +8,20 @@ struct SettingsView: View {
     @State private var loginError: String?
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
+                // Show signed-in account info at the top
+                if let name = auth.adminProfile?.name ?? auth.memberProfile?.name {
+                    Section {
+                        HStack {
+                            Image(systemName: "person.crop.circle")
+                                .foregroundColor(.gray)
+                            Text("Signed in as \(name)")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+
                 Section(header: Text("Account")) {
                     if auth.isSignedIn {
                         Button("Log Out") {
