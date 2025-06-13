@@ -1,12 +1,16 @@
 import SwiftUI
+import Firebase
+import FirebaseFirestore
 
 struct TeamHubView: View {
     let team: Team
+    // Do NOT use 'private' or 'fileprivate' here!
     @EnvironmentObject var auth: AuthViewModel
     @StateObject private var viewModel: TeamHubViewModel
     @State private var showEditEvent: Bool = false
     @State private var selectedEvent: Event? = nil
     @State private var showAddEvent: Bool = false
+    @State private var isPending: Bool = false
 
     init(team: Team) {
         self.team = team
@@ -15,78 +19,97 @@ struct TeamHubView: View {
 
     var body: some View {
         VStack(spacing: 24) {
-            Text("Welcome to the Team Hub")
-                .font(.largeTitle.bold())
-
-            Text("Here you'll find your team schedule, chat, and updates.")
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
-
-            NavigationLink(destination: TeamChatView(teamID: team.id)) {
-                HStack {
-                    Image(systemName: "bubble.left.and.bubble.right.fill")
-                        .font(.title2)
-                    Text("Team Chat")
-                        .font(.headline)
-                }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.blue)
-                .cornerRadius(12)
-            }
-
-            // EVENTS SECTION
-            VStack(alignment: .leading, spacing: 20) {
-                HStack {
-                    Text("Upcoming")
-                        .font(.title3.bold())
+            if isPending {
+                PendingApprovalView()
+            } else if (auth.user != nil && auth.memberProfile == nil && auth.adminProfile == nil) {
+                VStack {
                     Spacer()
-                    if isAdminOrDev {
-                        Button(action: { showAddEvent = true }) {
-                            Image(systemName: "plus.circle.fill")
-                                .font(.title2)
-                                .foregroundColor(.blue)
-                        }
-                        .accessibilityLabel("Add Event")
-                    }
+                    ProgressView("Loading profile...")
+                    Spacer()
                 }
-                .padding(.leading, 4)
+            } else {
+                Text("Welcome to the Team Hub")
+                    .font(.largeTitle.bold())
 
-                // Scrollable event cards, fixed height (about 3 cards)
-                GeometryReader { geo in
-                    ScrollView {
-                        VStack(spacing: 12) {
-                            ForEach(viewModel.events) { event in
-                                Button(action: {
-                                    selectedEvent = event
-                                }) {
-                                    EventCard(event: event)
-                                }
-                                .buttonStyle(.plain)
+                Text("Here you'll find your team schedule, chat, and updates.")
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+
+                NavigationLink(destination: TeamChatView(teamID: team.id)) {
+                    HStack {
+                        Image(systemName: "bubble.left.and.bubble.right.fill")
+                            .font(.title2)
+                        Text("Team Chat")
+                            .font(.headline)
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.blue)
+                    .cornerRadius(12)
+                }
+
+                // EVENTS SECTION
+                VStack(alignment: .leading, spacing: 20) {
+                    HStack {
+                        Text("Upcoming")
+                            .font(.title3.bold())
+                        Spacer()
+                        // Only admin/dev can add events
+                        if let role = auth.adminProfile?.role, role == "admin" || role == "developer" {
+                            Button(action: { showAddEvent = true }) {
+                                Image(systemName: "plus.circle.fill")
+                                    .font(.title2)
+                                    .foregroundColor(.blue)
                             }
+                            .accessibilityLabel("Add Event")
                         }
-                        .padding(.vertical, 4)
                     }
-                    .frame(height: min(geo.size.height, 3 * 92)) // ~92pt per card (padding + shadow)
-                }
-                .frame(height: 3 * 92) // Fixed height for 3 cards
-            }
-            .padding(.top, 8)
+                    .padding(.leading, 4)
 
-            Spacer()
+                    // Scrollable event cards, fixed height (about 3 cards)
+                    GeometryReader { geo in
+                        ScrollView {
+                            VStack(spacing: 12) {
+                                ForEach(viewModel.events) { event in
+                                    // Only admin/dev can tap to edit events
+                                    if let role = auth.adminProfile?.role, role == "admin" || role == "developer" {
+                                        Button(action: {
+                                            selectedEvent = event
+                                        }) {
+                                            EventCard(event: event)
+                                        }
+                                        .buttonStyle(.plain)
+                                    } else {
+                                        EventCard(event: event)
+                                    }
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .frame(height: min(geo.size.height, 3 * 92))
+                    }
+                    .frame(height: 3 * 92)
+                }
+                .padding(.top, 8)
+
+                Spacer()
+            }
         }
         .padding()
         .navigationTitle("Team Hub")
         .navigationBarTitleDisplayMode(.inline)
+        // Only admin/dev can open edit event sheet
         .sheet(item: $selectedEvent, onDismiss: { viewModel.fetchEvents() }) { event in
-            EditEventView(
-                event: event,
-                teamID: team.id,
-                members: viewModel.members,
-                onSave: { viewModel.fetchEvents() },
-                onDelete: { viewModel.fetchEvents() }
-            )
+            if let role = auth.adminProfile?.role, role == "admin" || role == "developer" {
+                EditEventView(
+                    event: event,
+                    teamID: team.id,
+                    members: viewModel.members,
+                    onSave: { viewModel.fetchEvents() },
+                    onDelete: { viewModel.fetchEvents() }
+                )
+            }
         }
         .sheet(isPresented: $showAddEvent, onDismiss: { viewModel.fetchEvents() }) {
             AddEventView(
@@ -95,11 +118,49 @@ struct TeamHubView: View {
                 onAdd: { viewModel.fetchEvents(); showAddEvent = false }
             )
         }
+        .onAppear {
+            checkPendingStatus()
+        }
     }
 
-    private var isAdminOrDev: Bool {
-        let role = auth.adminProfile?.role
-        return role == "admin" || role == "developer"
+    // Check if the current member is pending approval
+    private func checkPendingStatus() {
+        // Do NOT use .wrappedValue or any property wrapper here!
+        guard let user = auth.user else {
+            isPending = false
+            return
+        }
+        let db = Firestore.firestore()
+        db.collection("joinRequests")
+            .whereField("uid", isEqualTo: user.uid)
+            .whereField("status", isEqualTo: "pending")
+            .getDocuments { snapshot, _ in
+                if let docs = snapshot?.documents, !docs.isEmpty {
+                    isPending = true
+                } else {
+                    isPending = false
+                }
+            }
+    }
+}
+
+// MARK: - PendingApprovalView
+
+private struct PendingApprovalView: View {
+    var body: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "hourglass")
+                .font(.system(size: 48))
+                .foregroundColor(.orange)
+            Text("Your request to join this team is pending approval.")
+                .font(.title2.bold())
+                .multilineTextAlignment(.center)
+            Text("Once an admin approves your request, you'll have full access to your team's hub, schedule, and chat.")
+                .multilineTextAlignment(.center)
+                .foregroundColor(.secondary)
+            Spacer()
+        }
+        .padding()
     }
 }
 

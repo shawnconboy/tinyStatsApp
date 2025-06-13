@@ -30,7 +30,7 @@ struct TeamChatView: View {
                     }
                     .padding()
                 }
-                .onChange(of: messages.count) { _ in
+                .onChange(of: messages.count) { _, _ in
                     if let last = messages.last?.id {
                         withAnimation {
                             scrollProxy.scrollTo(last, anchor: .bottom)

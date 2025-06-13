@@ -28,11 +28,11 @@ struct AddEventView: View {
                             TextField("Team A Name", text: $teamAName)
                                 .textFieldStyle(PlainTextFieldStyle())
                                 .padding(.vertical, 6)
-                                .onChange(of: teamAName) { _ in updateTitle() }
+                                .onChange(of: teamAName) { _, _ in updateTitle() }
                             TextField("Team B Name", text: $teamBName)
                                 .textFieldStyle(PlainTextFieldStyle())
                                 .padding(.vertical, 6)
-                                .onChange(of: teamBName) { _ in updateTitle() }
+                                .onChange(of: teamBName) { _, _ in updateTitle() }
 
                             Text("Snack Volunteer")
                                 .font(.caption)

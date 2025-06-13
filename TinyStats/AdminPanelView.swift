@@ -73,7 +73,8 @@ struct AdminPanelView: View {
 // Helper extension for AdminPanelViewModel to fetch org name by ID
 extension AdminPanelViewModel {
     func organizationName(for orgID: String) -> String? {
-        // Replace this with your actual org name lookup logic if available.
+        // Defensive: Ensure orgID is not empty and is a String
+        guard !orgID.isEmpty else { return nil }
         // TEMP: fallback to hardcoded for demo
         if orgID.lowercased().contains("duncan") {
             return "Duncan YMCA"

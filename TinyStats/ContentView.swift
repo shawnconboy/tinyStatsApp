@@ -47,7 +47,7 @@ struct ContentView: View {
                 checkIfShouldDismissSplash()
             }
         }
-        .onChange(of: auth.isProfileLoaded) { _ in
+        .onChange(of: auth.isProfileLoaded) { _, _ in
             checkIfShouldDismissSplash()
         }
     }
