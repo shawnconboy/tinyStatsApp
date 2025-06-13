@@ -4,12 +4,14 @@ import Firebase
 class AdminPanelViewModel: ObservableObject {
     @Published var teams: [Team] = []
     @Published var pendingRequests: [JoinRequest] = []
+    @Published var admins: [Admin] = [] // <-- Added
 
     private var auth: AuthViewModel
 
     init(auth: AuthViewModel) {
         self.auth = auth
         fetchTeams()
+        fetchAdmins() // <-- Added
     }
 
     func fetchTeams() {
@@ -49,6 +51,26 @@ class AdminPanelViewModel: ObservableObject {
                             uid: data["uid"] as? String ?? ""
                         )
                     }
+                }
+            }
+    }
+
+    func fetchAdmins() {
+        guard let orgID = auth.adminProfile?.organizationID else { return }
+        let db = Firestore.firestore()
+        db.collection("admins")
+            .whereField("organizationID", isEqualTo: orgID)
+            .getDocuments { snapshot, _ in
+                guard let docs = snapshot?.documents else { return }
+                self.admins = docs.map { doc in
+                    let data = doc.data()
+                    return Admin(
+                        _id: doc.documentID,
+                        name: data["name"] as? String ?? "",
+                        uid: data["uid"] as? String ?? "",
+                        email: data["email"] as? String,
+                        role: data["role"] as? String
+                    )
                 }
             }
     }

@@ -6,6 +6,8 @@ struct AdminPanelView: View {
     @StateObject var viewModel: AdminPanelViewModel
     @EnvironmentObject var auth: AuthViewModel
     @State private var showAddTeam = false
+    @State private var showCreateCoach = false
+    @State private var isRefreshing = false // <-- NEW
 
     init(auth: AuthViewModel) {
         _viewModel = StateObject(wrappedValue: AdminPanelViewModel(auth: auth))
@@ -14,6 +16,7 @@ struct AdminPanelView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
+                // --- Add pull-to-refresh using SwiftUI's refreshable (iOS 15+) ---
                 VStack(spacing: 24) {
                     Text("Manage your organization, teams, and requests.")
                         .multilineTextAlignment(.center)
@@ -31,6 +34,18 @@ struct AdminPanelView: View {
                                 .padding(.vertical, 4)
                             Spacer()
                         }
+                    }
+
+                    HStack {
+                        Spacer()
+                        // Only devs can add coaches
+                        if let role = auth.adminProfile?.role, role == "developer" {
+                            Button(action: { showCreateCoach = true }) {
+                                Label("Create Coach", systemImage: "person.crop.circle.badge.plus")
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+                        Spacer()
                     }
 
                     // Teams Section
@@ -79,12 +94,27 @@ struct AdminPanelView: View {
                 }
                 .padding()
             }
+            .refreshable {
+                isRefreshing = true
+                viewModel.fetchTeams()
+                viewModel.fetchAdmins()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    isRefreshing = false
+                }
+            }
             .navigationTitle("Admin Hub")
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showAddTeam, onDismiss: { viewModel.fetchTeams() }) {
                 AddTeamView(
                     organizationID: auth.adminProfile?.organizationID ?? "",
+                    admins: viewModel.admins, // <-- pass admins
                     onAdd: { viewModel.fetchTeams(); showAddTeam = false }
+                )
+            }
+            .sheet(isPresented: $showCreateCoach, onDismiss: { viewModel.fetchAdmins() }) {
+                CreateCoachView(
+                    organizationID: auth.adminProfile?.organizationID ?? "",
+                    onCreated: { viewModel.fetchAdmins(); showCreateCoach = false }
                 )
             }
         }
@@ -106,15 +136,20 @@ extension AdminPanelViewModel {
 
 struct AddTeamView: View {
     let organizationID: String
+    let admins: [Admin]
     let onAdd: () -> Void
 
     @Environment(\.dismiss) var dismiss
     @State private var teamName: String = ""
     @State private var ageGroup: String = ""
     @State private var sport: String = ""
-    @State private var coachID: String = ""
+    @State private var selectedCoachID: String = ""
     @State private var isSubmitting = false
     @State private var errorMessage: String = ""
+
+    // Dropdown options
+    private let ageGroups = ["U6", "U8", "U10", "U12", "U14", "U16", "U18", "Adult"]
+    private let sports = ["Soccer", "Basketball", "Baseball", "Softball", "Football", "Volleyball", "Hockey", "Other"]
 
     var body: some View {
         NavigationStack {
@@ -133,25 +168,44 @@ struct AddTeamView: View {
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                                 .padding(.top, 8)
-                            TextField("U10", text: $ageGroup)
-                                .textFieldStyle(PlainTextFieldStyle())
-                                .padding(.vertical, 6)
+                            Picker("Age Group", selection: $ageGroup) {
+                                Text("Select Age Group").tag("")
+                                ForEach(ageGroups, id: \.self) { group in
+                                    Text(group).tag(group)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .padding(.vertical, 6)
 
                             Text("Sport")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                                 .padding(.top, 8)
-                            TextField("Soccer", text: $sport)
-                                .textFieldStyle(PlainTextFieldStyle())
-                                .padding(.vertical, 6)
+                            Picker("Sport", selection: $sport) {
+                                Text("Select Sport").tag("")
+                                ForEach(sports, id: \.self) { s in
+                                    Text(s).tag(s)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .padding(.vertical, 6)
 
-                            Text("Coach ID")
+                            Text("Coach")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                                 .padding(.top, 8)
-                            TextField("dev_shawnC_duncanYmca_001", text: $coachID)
-                                .textFieldStyle(PlainTextFieldStyle())
-                                .padding(.vertical, 6)
+                            Picker("Coach", selection: $selectedCoachID) {
+                                ForEach(admins, id: \.id) { admin in
+                                    Text("\(admin.name)\(admin.role != nil ? " (\(admin.role!))" : "")").tag(admin._id)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .padding(.vertical, 6)
+                            .onAppear {
+                                if selectedCoachID.isEmpty, let first = admins.first {
+                                    selectedCoachID = first._id
+                                }
+                            }
                         }
                     }
                     .padding()
@@ -164,7 +218,11 @@ struct AddTeamView: View {
                             .foregroundColor(.red)
                     }
 
-                    Button(action: addTeam) {
+                    // Make the button fill width, tappable, and dismiss keyboard on tap
+                    Button(action: {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        addTeam()
+                    }) {
                         if isSubmitting {
                             ProgressView()
                                 .frame(maxWidth: .infinity)
@@ -178,8 +236,9 @@ struct AddTeamView: View {
                     .background(isSubmitting ? Color.gray : Color.blue)
                     .foregroundColor(.white)
                     .cornerRadius(10)
+                    .contentShape(Rectangle()) // Ensures the whole button area is tappable
                     .buttonStyle(.plain)
-                    .disabled(isSubmitting || teamName.isEmpty || ageGroup.isEmpty || sport.isEmpty || coachID.isEmpty)
+                    .disabled(isSubmitting || teamName.isEmpty || ageGroup.isEmpty || sport.isEmpty || selectedCoachID.isEmpty)
 
                     Spacer()
                 }
@@ -196,25 +255,148 @@ struct AddTeamView: View {
         errorMessage = ""
 
         let db = Firestore.firestore()
-        let teamDoc = db.collection("teams").document()
-        let teamID = teamDoc.documentID
 
-        let teamData: [String: Any] = [
-            "name": teamName,
-            "ageGroup": ageGroup,
-            "organizationID": organizationID,
-            "sport": sport,
-            "coachIDs": [coachID]
-        ]
+        // Generate structured team ID (e.g., team_redRockets_duncanYmca_001)
+        let formattedTeamName = teamName.replacingOccurrences(of: " ", with: "")
+        let baseID = "team_\(formattedTeamName)_\(organizationID)_"
+        db.collection("teams")
+            .whereField("organizationID", isEqualTo: organizationID)
+            .getDocuments { snapshot, _ in
+                let similarIDs = snapshot?.documents.map { $0.documentID }
+                    .filter { $0.hasPrefix(baseID) } ?? []
+                let nextNumber = similarIDs.count + 1
+                let formattedNumber = String(format: "%03d", nextNumber)
+                let structuredTeamID = baseID + formattedNumber
 
-        teamDoc.setData(teamData) { err in
-            isSubmitting = false
-            if let err = err {
-                errorMessage = err.localizedDescription
-            } else {
-                onAdd()
-                dismiss()
+                let teamData: [String: Any] = [
+                    "name": teamName,
+                    "ageGroup": ageGroup,
+                    "organizationID": organizationID,
+                    "sport": sport,
+                    "coachIDs": selectedCoachID.isEmpty ? [] : [selectedCoachID]
+                ]
+
+                // Use the structuredTeamID as the document ID
+                db.collection("teams").document(structuredTeamID).setData(teamData) { err in
+                    if let err = err {
+                        isSubmitting = false
+                        errorMessage = err.localizedDescription
+                    } else {
+                        // Assign the structured team ID to the coach's teamID field
+                        if !selectedCoachID.isEmpty {
+                            db.collection("admins").document(selectedCoachID).updateData([
+                                "teamID": structuredTeamID
+                            ]) { updateErr in
+                                if let updateErr = updateErr {
+                                    print("Error updating coach's teamID: \(updateErr.localizedDescription)")
+                                }
+                                isSubmitting = false
+                                onAdd()
+                                dismiss()
+                            }
+                        } else {
+                            isSubmitting = false
+                            onAdd()
+                            dismiss()
+                        }
+                    }
+                }
             }
+    }
+}
+
+// --- NEW: CreateCoachView ---
+
+struct CreateCoachView: View {
+    let organizationID: String
+    let onCreated: () -> Void
+
+    @Environment(\.dismiss) var dismiss
+    @State private var name: String = ""
+    @State private var email: String = ""
+    @State private var password: String = ""
+    @State private var isSubmitting = false
+    @State private var errorMessage: String = ""
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section(header: Text("Coach Info")) {
+                    TextField("Full Name", text: $name)
+                        .autocapitalization(.words)
+                    TextField("Email", text: $email)
+                        .keyboardType(.emailAddress)
+                        .autocapitalization(.none)
+                    SecureField("Password", text: $password)
+                }
+                if !errorMessage.isEmpty {
+                    Text(errorMessage)
+                        .foregroundColor(.red)
+                }
+                Button(isSubmitting ? "Creating..." : "Create Coach") {
+                    createCoach()
+                }
+                .disabled(isSubmitting || name.isEmpty || email.isEmpty || password.isEmpty)
+            }
+            .navigationTitle("Create Coach")
+        }
+    }
+
+    private func createCoach() {
+        guard !isSubmitting else { return }
+        isSubmitting = true
+        errorMessage = ""
+
+        // Generate structured document ID
+        let nameParts = name.split(separator: " ")
+        let firstName = nameParts.first?.lowercased() ?? "coach"
+        let lastInitial = nameParts.dropFirst().first?.prefix(1).capitalized ?? "X"
+        let formattedName = "\(firstName)\(lastInitial)"
+        let orgID = organizationID
+        let baseID = "coach_\(formattedName)_\(orgID)_"
+
+        // Create Firebase Auth user
+        Auth.auth().createUser(withEmail: email, password: password) { result, error in
+            if let error = error {
+                self.errorMessage = error.localizedDescription
+                self.isSubmitting = false
+                return
+            }
+            guard let uid = result?.user.uid else {
+                self.errorMessage = "Failed to create user."
+                self.isSubmitting = false
+                return
+            }
+            
+            // Find next available coach number
+            let db = Firestore.firestore()
+            db.collection("admins")
+                .whereField("organizationID", isEqualTo: orgID)
+                .whereField("role", isEqualTo: "coach")
+                .getDocuments { snapshot, _ in
+                    let similarIDs = snapshot?.documents.map { $0.documentID }
+                        .filter { $0.hasPrefix(baseID) } ?? []
+                    let nextNumber = similarIDs.count + 1
+                    let formattedNumber = String(format: "%03d", nextNumber)
+                    let docID = baseID + formattedNumber
+                    
+                    let adminData: [String: Any] = [
+                        "name": name,
+                        "email": email,
+                        "uid": uid,
+                        "organizationID": orgID,
+                        "role": "coach"
+                    ]
+                    db.collection("admins").document(docID).setData(adminData) { err in
+                        self.isSubmitting = false
+                        if let err = err {
+                            self.errorMessage = err.localizedDescription
+                        } else {
+                            onCreated()
+                            dismiss()
+                        }
+                    }
+                }
         }
     }
 }

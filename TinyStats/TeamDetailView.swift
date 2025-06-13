@@ -6,10 +6,8 @@ struct TeamDetailView: View {
 
     @State private var members: [Member] = []
     @State private var selectedMember: Member?
-
     @State private var admins: [Admin] = []
     @State private var selectedAdmin: Admin?
-
     @State private var pendingRequests: [JoinRequest] = []
     @State private var selectedRequest: JoinRequest?
 
@@ -25,22 +23,28 @@ struct TeamDetailView: View {
                     .font(.title2)
                     .padding(.horizontal)
 
-                ForEach(admins) { admin in
-                    Button {
-                        selectedAdmin = admin
-                    } label: {
-                        HStack {
-                            Text(admin.name)
-                                .font(.headline)
-                            Spacer()
-                        }
-                        .padding()
-                        .background(Color.white)
-                        .cornerRadius(12)
-                        .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
+                if admins.isEmpty {
+                    Text("No admins assigned to this team.")
+                        .foregroundColor(.secondary)
                         .padding(.horizontal)
+                } else {
+                    ForEach(admins) { admin in
+                        Button {
+                            selectedAdmin = admin
+                        } label: {
+                            HStack {
+                                Text(admin.name)
+                                    .font(.headline)
+                                Spacer()
+                            }
+                            .padding()
+                            .background(Color.white)
+                            .cornerRadius(12)
+                            .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
+                            .padding(.horizontal)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
 
                 // Pending Join Requests
@@ -145,15 +149,21 @@ struct TeamDetailView: View {
             .whereField("organizationID", isEqualTo: team.organizationID)
             .getDocuments { snapshot, _ in
                 guard let docs = snapshot?.documents else { return }
-                self.admins = docs.map { doc in
+                self.admins = docs.compactMap { doc in
                     let data = doc.data()
-                    return Admin(
-                        _id: doc.documentID,
-                        name: data["name"] as? String ?? "",
-                        uid: data["uid"] as? String ?? "",
-                        email: data["email"] as? String,
-                        role: data["role"] as? String
-                    )
+                    let role = data["role"] as? String ?? ""
+                    let adminTeamID = data["teamID"] as? String ?? ""
+                    // Show all admins/devs, but only coaches for this team (skip empty teamID for coach)
+                    if role == "admin" || role == "developer" || (role == "coach" && !adminTeamID.isEmpty && adminTeamID == team._id) {
+                        return Admin(
+                            _id: doc.documentID,
+                            name: data["name"] as? String ?? "",
+                            uid: data["uid"] as? String ?? "",
+                            email: data["email"] as? String,
+                            role: role
+                        )
+                    }
+                    return nil
                 }
             }
     }
