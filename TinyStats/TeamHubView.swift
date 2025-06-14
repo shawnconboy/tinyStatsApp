@@ -28,13 +28,24 @@ struct TeamHubView: View {
                     Spacer()
                 }
             } else {
+                // Header
                 Text("Welcome to the Team Hub")
                     .font(.largeTitle.bold())
 
+                // Subheader
                 Text("Here you'll find your team schedule, chat, and updates.")
                     .multilineTextAlignment(.center)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
                     .padding(.horizontal)
 
+                // Team Name
+                Text(team.name)
+                    .font(.title)
+                    .fontWeight(.semibold)
+                    .padding(.bottom, 4)
+
+                // Team Chat Button
                 NavigationLink(destination: TeamChatView(teamID: team.id)) {
                     HStack {
                         Image(systemName: "bubble.left.and.bubble.right.fill")
@@ -55,8 +66,8 @@ struct TeamHubView: View {
                         Text("Upcoming")
                             .font(.title3.bold())
                         Spacer()
-                        // Only admin/dev can add events
-                        if let role = auth.adminProfile?.role, role == "admin" || role == "developer" {
+                        // Allow admin, developer, and coach to add events
+                        if let role = auth.adminProfile?.role, role == "admin" || role == "developer" || role == "coach" {
                             Button(action: { showAddEvent = true }) {
                                 Image(systemName: "plus.circle.fill")
                                     .font(.title2)
@@ -72,8 +83,8 @@ struct TeamHubView: View {
                         ScrollView {
                             VStack(spacing: 12) {
                                 ForEach(viewModel.events) { event in
-                                    // Only admin/dev can tap to edit events
-                                    if let role = auth.adminProfile?.role, role == "admin" || role == "developer" {
+                                    // Allow admin, developer, and coach to tap to edit events
+                                    if let role = auth.adminProfile?.role, role == "admin" || role == "developer" || role == "coach" {
                                         Button(action: {
                                             selectedEvent = event
                                         }) {
@@ -99,9 +110,9 @@ struct TeamHubView: View {
         .padding()
         .navigationTitle("Team Hub")
         .navigationBarTitleDisplayMode(.inline)
-        // Only admin/dev can open edit event sheet
+        // Only admin/dev/coach can open edit event sheet
         .sheet(item: $selectedEvent, onDismiss: { viewModel.fetchEvents() }) { event in
-            if let role = auth.adminProfile?.role, role == "admin" || role == "developer" {
+            if let role = auth.adminProfile?.role, role == "admin" || role == "developer" || role == "coach" {
                 EditEventView(
                     event: event,
                     teamID: team.id,

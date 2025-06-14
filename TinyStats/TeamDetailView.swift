@@ -3,37 +3,37 @@ import FirebaseFirestore
 
 struct TeamDetailView: View {
     let team: Team
-
+    
     @State private var members: [Member] = []
     @State private var selectedMember: Member?
-    @State private var admins: [Admin] = []
-    @State private var selectedAdmin: Admin?
+    @State private var coaches: [Admin] = []
+    @State private var selectedCoach: Admin?
     @State private var pendingRequests: [JoinRequest] = []
     @State private var selectedRequest: JoinRequest?
-
+    
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 Text(team.name)
                     .font(.largeTitle.bold())
                     .padding(.horizontal)
-
-                // Admins
-                Text("Admins")
+                
+                // Coaches Section
+                Text("Coaches")
                     .font(.title2)
                     .padding(.horizontal)
-
-                if admins.isEmpty {
-                    Text("No admins assigned to this team.")
+                
+                if coaches.isEmpty {
+                    Text("No coaches assigned to this team.")
                         .foregroundColor(.secondary)
                         .padding(.horizontal)
                 } else {
-                    ForEach(admins) { admin in
+                    ForEach(coaches) { coach in
                         Button {
-                            selectedAdmin = admin
+                            selectedCoach = coach
                         } label: {
                             HStack {
-                                Text(admin.name)
+                                Text(coach.name)
                                     .font(.headline)
                                 Spacer()
                             }
@@ -46,13 +46,13 @@ struct TeamDetailView: View {
                         .buttonStyle(.plain)
                     }
                 }
-
+                
                 // Pending Join Requests
                 if !pendingRequests.isEmpty {
                     Text("Pending Join Requests")
                         .font(.title2)
                         .padding(.horizontal)
-
+                    
                     ForEach(pendingRequests) { request in
                         Button {
                             selectedRequest = request
@@ -76,12 +76,12 @@ struct TeamDetailView: View {
                         .buttonStyle(.plain)
                     }
                 }
-
+                
                 // Members
                 Text("Members")
                     .font(.title2)
                     .padding(.horizontal)
-
+                
                 ForEach(members) { member in
                     Button {
                         selectedMember = member
@@ -95,7 +95,7 @@ struct TeamDetailView: View {
             .padding(.top)
         }
         .onAppear {
-            fetchAdmins()
+            fetchCoaches()
             fetchPendingRequests()
             fetchMembers()
         }
@@ -104,9 +104,9 @@ struct TeamDetailView: View {
                 fetchMembers()
             }
         }
-        .sheet(item: $selectedAdmin) { admin in
-            EditAdminView(admin: admin) {
-                fetchAdmins()
+        .sheet(item: $selectedCoach) { coach in
+            EditAdminView(admin: coach) {
+                fetchCoaches()
             }
         }
         .sheet(item: $selectedRequest) { request in
@@ -123,7 +123,7 @@ struct TeamDetailView: View {
             )
         }
     }
-
+    
     func fetchMembers() {
         let db = Firestore.firestore()
         db.collection("members")
@@ -142,32 +142,28 @@ struct TeamDetailView: View {
                 }
             }
     }
-
-    func fetchAdmins() {
+    
+    // Only fetch admins with role "coach" and matching teamID
+    func fetchCoaches() {
         let db = Firestore.firestore()
         db.collection("admins")
-            .whereField("organizationID", isEqualTo: team.organizationID)
+            .whereField("role", isEqualTo: "coach")
+            .whereField("teamID", isEqualTo: team._id)
             .getDocuments { snapshot, _ in
                 guard let docs = snapshot?.documents else { return }
-                self.admins = docs.compactMap { doc in
+                self.coaches = docs.compactMap { doc in
                     let data = doc.data()
-                    let role = data["role"] as? String ?? ""
-                    let adminTeamID = data["teamID"] as? String ?? ""
-                    // Show all admins/devs, but only coaches for this team (skip empty teamID for coach)
-                    if role == "admin" || role == "developer" || (role == "coach" && !adminTeamID.isEmpty && adminTeamID == team._id) {
-                        return Admin(
-                            _id: doc.documentID,
-                            name: data["name"] as? String ?? "",
-                            uid: data["uid"] as? String ?? "",
-                            email: data["email"] as? String,
-                            role: role
-                        )
-                    }
-                    return nil
+                    return Admin(
+                        _id: doc.documentID,
+                        name: data["name"] as? String ?? "",
+                        uid: data["uid"] as? String ?? "",
+                        email: data["email"] as? String,
+                        role: data["role"] as? String
+                    )
                 }
             }
     }
-
+    
     func fetchPendingRequests() {
         let db = Firestore.firestore()
         db.collection("joinRequests")
@@ -189,29 +185,29 @@ struct TeamDetailView: View {
                 }
             }
     }
-
+    
     func approveRequest(_ request: JoinRequest, jerseyNumber: Int) {
         let db = Firestore.firestore()
-
+        
         let nameParts = request.parentName.split(separator: " ")
         let firstName = nameParts.first?.lowercased() ?? "parent"
         let lastInitial = nameParts.dropFirst().first?.prefix(1).capitalized ?? "X"
         let formattedName = "\(firstName)\(lastInitial)"
-
+        
         let orgID = team.organizationID
         let role = "parent"
         let baseID = "\(role)_\(formattedName)_\(orgID)_"
-
+        
         db.collection("members")
             .whereField("teamID", isEqualTo: team._id)
             .getDocuments { snapshot, _ in
                 let similarIDs = snapshot?.documents.map { $0.documentID }
                     .filter { $0.hasPrefix(baseID) } ?? []
-
+                
                 let nextNumber = similarIDs.count + 1
                 let formattedNumber = String(format: "%03d", nextNumber)
                 let fullID = baseID + formattedNumber
-
+                
                 let newMember: [String: Any] = [
                     "name": request.parentName,
                     "childName": request.childName,
@@ -222,11 +218,11 @@ struct TeamDetailView: View {
                     "playerNumber": jerseyNumber,
                     "role": role
                 ]
-
+                
                 db.collection("members").document(fullID).setData(newMember) { error in
                     if error == nil {
                         db.collection("joinRequests").document(request.id).delete()
-
+                        
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                             fetchPendingRequests()
                             fetchMembers()
@@ -235,7 +231,7 @@ struct TeamDetailView: View {
                 }
             }
     }
-
+    
     func denyRequest(_ request: JoinRequest) {
         let db = Firestore.firestore()
         db.collection("joinRequests").document(request.id).delete { error in
