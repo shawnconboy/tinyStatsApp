@@ -28,11 +28,9 @@ struct TeamHubView: View {
                     Spacer()
                 }
             } else {
-                // Header
-                Text("Welcome to the Team Hub")
-                    .font(.largeTitle.bold())
+            
 
-                // Subheader
+                // Subheader/message
                 Text("Here you'll find your team schedule, chat, and updates.")
                     .multilineTextAlignment(.center)
                     .font(.subheadline)

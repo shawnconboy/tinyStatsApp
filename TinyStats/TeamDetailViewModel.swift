@@ -10,7 +10,6 @@ class TeamDetailViewModel: ObservableObject {
 
     func fetchMembers(for teamID: String) {
         let db = Firestore.firestore()
-
         db.collection("members").whereField("teamID", isEqualTo: teamID).getDocuments { snapshot, _ in
             guard let docs = snapshot?.documents else { return }
             self.members = docs.map { doc in

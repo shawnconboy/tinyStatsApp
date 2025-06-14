@@ -81,7 +81,7 @@ class AuthViewModel: ObservableObject {
         }
     }
 
-    private func fetchUserProfile(for uid: String) {
+    func fetchUserProfile(for uid: String) {
         let db = Firestore.firestore()
 
         db.collection("admins")
